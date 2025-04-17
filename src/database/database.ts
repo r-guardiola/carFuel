@@ -11,6 +11,17 @@ export const getDatabase = (): SQLiteDatabase => {
 
 export const database = getDatabase();
 
+export const clearDatabase = async (): Promise<void> => {
+  try {
+    await database.execAsync('DELETE FROM abastecimento');
+    await database.execAsync('DELETE FROM configuracao');
+    console.log('Banco de dados limpo com sucesso');
+  } catch (error) {
+    console.error('Erro ao limpar banco de dados:', error);
+    throw error;
+  }
+};
+
 export const initDatabase = async (): Promise<void> => {
   try {
     // Tabela de configurações

@@ -1,17 +1,44 @@
 import React from 'react';
-import { View, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { DashboardScreen, TestScreen } from '../screens';
 
-// Implementação temporária até criarmos a navegação real
+const Stack = createStackNavigator();
+
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>O projeto está configurado corretamente!</Text>
-        <Text>Banco de dados SQLite carregado com sucesso.</Text>
-      </View>
+      <Stack.Navigator
+        initialRouteName="Dashboard"
+        screenOptions={{
+          headerStyle: {
+            elevation: 0,
+            shadowOpacity: 0,
+          },
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        }}
+      >
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{
+            title: 'Meu Veículo',
+            headerTitleAlign: 'center',
+          }}
+        />
+        <Stack.Screen
+          name="Test"
+          component={TestScreen}
+          options={{
+            title: 'Tela de Teste',
+            headerTitleAlign: 'center',
+          }}
+        />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };
 
-export default AppNavigator; 
+export default AppNavigator;
