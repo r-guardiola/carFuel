@@ -1,6 +1,7 @@
 import { Abastecimento } from '../types/abastecimento';
 import { database } from './database';
 import { generateUUID } from '../utils/uuid';
+import { getVeiculoAtivo } from './veiculoService';
 
 export const insertTestData = async (): Promise<void> => {
   try {
@@ -13,9 +14,17 @@ export const insertTestData = async (): Promise<void> => {
       return;
     }
     
+    // Obter o veículo ativo
+    const veiculoAtivo = await getVeiculoAtivo();
+    
+    if (!veiculoAtivo) {
+      console.log('Nenhum veículo ativo encontrado, não é possível inserir dados de teste');
+      return;
+    }
+    
     // Criar dados de teste
     const now = new Date();
-    const testData: Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt'>[] = [
+    const testData: Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt' | 'veiculoId'>[] = [
       {
         data: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // 7 dias atrás
         valorLitro: 5.89,
@@ -67,8 +76,8 @@ export const insertTestData = async (): Promise<void> => {
         `INSERT INTO abastecimento (
           id, data, valorLitro, litros, valorTotal, tipoCombustivel, 
           kmAtual, kmPercorridos, posto, tanqueCheio, chequeiCalibragem, 
-          chequeiOleo, useiAditivo, observacoes, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          chequeiOleo, useiAditivo, observacoes, veiculoId, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           item.data.toISOString(),
@@ -84,6 +93,7 @@ export const insertTestData = async (): Promise<void> => {
           item.chequeiOleo ? 1 : 0,
           item.useiAditivo ? 1 : 0,
           item.observacoes || null,
+          veiculoAtivo.id,
           now.toISOString(),
           now.toISOString()
         ]

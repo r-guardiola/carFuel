@@ -15,6 +15,7 @@ export interface Abastecimento {
   chequeiOleo: boolean;
   useiAditivo: boolean;
   observacoes?: string;
+  veiculoId: string;
   createdAt: Date;
   updatedAt: Date;
 } 

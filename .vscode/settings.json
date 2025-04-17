@@ -1,0 +1,5 @@
+{
+    "terminal.explorerKind": "external",
+    "terminal.integrated.accessibleViewFocusOnCommandExecution": true,
+    "terminal.integrated.automationProfile.linux": {}
+}

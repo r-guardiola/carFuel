@@ -34,7 +34,7 @@
   - Follow React Native's threading model to ensure smooth UI performance.
   - Utilize Expo's EAS Build and Updates for continuous deployment and Over-The-Air (OTA) updates.
   - Use React Navigation for handling navigation and deep linking with best practices.
-  - You are interacting in a Windows PowerShell. 
+  - Use WSL Terminal from Ubuntu 22.04, all commands you suggest are for Linux.
   
   Target Device
   - The primary target device is an car head unit using Android 11 and a screen size of 1280 x 720

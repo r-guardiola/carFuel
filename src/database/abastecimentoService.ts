@@ -1,11 +1,50 @@
 import { database } from './database';
 import { Abastecimento } from '../types/abastecimento';
 import { generateUUID } from '../utils/uuid';
+import { getVeiculoAtivo } from './veiculoService';
+
+// Atualiza os registros antigos de abastecimento para associá-los ao veículo ativo
+export const updateAbastecimentosLegados = async (): Promise<void> => {
+  try {
+    const veiculoAtivo = await getVeiculoAtivo();
+    
+    if (!veiculoAtivo) {
+      console.log('Nenhum veículo ativo encontrado para atualizar abastecimentos legados');
+      return;
+    }
+    
+    // Verificar se existem registros com veiculoId = 'temp_id'
+    const result = await database.getAllAsync<{ count: number }>(
+      "SELECT COUNT(*) as count FROM abastecimento WHERE veiculoId = 'temp_id'"
+    );
+    
+    if (result[0].count > 0) {
+      console.log(`Atualizando ${result[0].count} abastecimentos legados para o veículo ativo...`);
+      await database.runAsync(
+        "UPDATE abastecimento SET veiculoId = ? WHERE veiculoId = 'temp_id'",
+        [veiculoAtivo.id]
+      );
+      console.log('Abastecimentos legados atualizados com sucesso!');
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar abastecimentos legados:', error);
+    throw error;
+  }
+};
 
 export const getAbastecimentos = async (): Promise<Abastecimento[]> => {
   try {
+    // Buscar o veículo ativo
+    const veiculoAtivo = await getVeiculoAtivo();
+    
+    if (!veiculoAtivo) {
+      console.log('Nenhum veículo ativo encontrado');
+      return [];
+    }
+    
     const resultado = await database.getAllAsync<any>(
-      'SELECT * FROM abastecimento ORDER BY data DESC'
+      'SELECT * FROM abastecimento WHERE veiculoId = ? ORDER BY data DESC',
+      [veiculoAtivo.id]
     );
     
     return resultado.map(row => ({
@@ -52,22 +91,30 @@ export const getAbastecimentoById = async (id: string): Promise<Abastecimento | 
   }
 };
 
-export const insertAbastecimento = async (abastecimento: Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt'>): Promise<Abastecimento> => {
-  const now = new Date();
-  const newAbastecimento: Abastecimento = {
-    ...abastecimento,
-    id: generateUUID(),
-    createdAt: now,
-    updatedAt: now
-  };
-  
+export const insertAbastecimento = async (abastecimento: Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt' | 'veiculoId'>): Promise<Abastecimento> => {
   try {
+    // Buscar o veículo ativo para associar ao abastecimento
+    const veiculoAtivo = await getVeiculoAtivo();
+    
+    if (!veiculoAtivo) {
+      throw new Error('Nenhum veículo ativo encontrado para associar ao abastecimento');
+    }
+    
+    const now = new Date();
+    const newAbastecimento: Abastecimento = {
+      ...abastecimento,
+      id: generateUUID(),
+      veiculoId: veiculoAtivo.id,
+      createdAt: now,
+      updatedAt: now
+    };
+    
     await database.runAsync(
       `INSERT INTO abastecimento (
         id, data, valorLitro, litros, valorTotal, tipoCombustivel, 
         kmAtual, kmPercorridos, posto, tanqueCheio, chequeiCalibragem, 
-        chequeiOleo, useiAditivo, observacoes, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        chequeiOleo, useiAditivo, observacoes, veiculoId, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newAbastecimento.id,
         newAbastecimento.data.toISOString(),
@@ -83,6 +130,7 @@ export const insertAbastecimento = async (abastecimento: Omit<Abastecimento, 'id
         newAbastecimento.chequeiOleo ? 1 : 0,
         newAbastecimento.useiAditivo ? 1 : 0,
         newAbastecimento.observacoes || null,
+        newAbastecimento.veiculoId,
         newAbastecimento.createdAt.toISOString(),
         newAbastecimento.updatedAt.toISOString()
       ]
@@ -109,12 +157,20 @@ export const calculateMediaConsumo = async (): Promise<{
   ultimoAbastecimento: number | null;
 }> => {
   try {
+    // Buscar o veículo ativo
+    const veiculoAtivo = await getVeiculoAtivo();
+    
+    if (!veiculoAtivo) {
+      return { mediaGeral: null, ultimoAbastecimento: null };
+    }
+    
     // Busca todos os abastecimentos com km percorridos (ordenados por data)
     const abastecimentos = await database.getAllAsync<{
       litros: number;
       kmPercorridos: number;
     }>(
-      'SELECT litros, kmPercorridos FROM abastecimento WHERE kmPercorridos IS NOT NULL ORDER BY data ASC'
+      'SELECT litros, kmPercorridos FROM abastecimento WHERE kmPercorridos IS NOT NULL AND veiculoId = ? ORDER BY data ASC',
+      [veiculoAtivo.id]
     );
     
     if (abastecimentos.length === 0) {
@@ -136,4 +192,4 @@ export const calculateMediaConsumo = async (): Promise<{
     console.error('Erro ao calcular média de consumo:', error);
     throw error;
   }
-}; 
+};

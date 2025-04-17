@@ -5,9 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
 import AppNavigator from './src/navigation/AppNavigator';
-import { initDatabase, clearDatabase } from './src/database/database';
-import { insertTestData } from './src/database/testData';
+import { initDatabase } from './src/database/database';
 import { ensureDefaultConfiguracao } from './src/database/configuracaoService';
+import { ensureDefaultVeiculo } from './src/database/veiculoService';
+import { updateAbastecimentosLegados } from './src/database/abastecimentoService';
 import { colors } from './src/theme';
 
 // Habilitar o react-native-screens para melhor performance
@@ -21,21 +22,20 @@ export default function App() {
     const init = async () => {
       try {
         // Inicializar o banco de dados
+        console.log('Inicializando banco de dados...');
         await initDatabase();
         
-        // Limpar dados antigos para evitar problemas com tentativas anteriores
-        await clearDatabase();
-        
         // Garantir que temos uma configuração padrão
+        console.log('Inicializando configurações padrão...');
         await ensureDefaultConfiguracao();
+        await ensureDefaultVeiculo();
+        await updateAbastecimentosLegados();
         
-        // Inserir dados de teste
-        await insertTestData();
-        
+        console.log('Inicialização concluída com sucesso!');
         setIsLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao inicializar o banco de dados:', err);
-        setError('Falha ao inicializar o aplicativo. Por favor, reinicie-o.');
+        setError(`Erro: ${err?.message || 'Desconhecido'}`);
         setIsLoading(false);
       }
     };
@@ -46,7 +46,8 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.title}>CarFuel</Text>
+        <ActivityIndicator size="large" color={colors.primary} style={styles.spinner} />
         <Text style={styles.loadingText}>Inicializando...</Text>
       </View>
     );
@@ -55,7 +56,9 @@ export default function App() {
   if (error) {
     return (
       <View style={styles.errorContainer}>
+        <Text style={styles.title}>CarFuel</Text>
         <Text style={styles.errorText}>{error}</Text>
+        <Text style={styles.retryText}>Por favor, reinicie o aplicativo.</Text>
       </View>
     );
   }
@@ -75,11 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: colors.text,
+    padding: 20,
   },
   errorContainer: {
     flex: 1,
@@ -88,9 +87,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: 20,
   },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginBottom: 30,
+  },
+  spinner: {
+    marginBottom: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.text,
+  },
   errorText: {
     color: colors.error,
     fontSize: 16,
     textAlign: 'center',
+    marginBottom: 20,
   },
+  retryText: {
+    fontSize: 14,
+    color: colors.text,
+  }
 }); 

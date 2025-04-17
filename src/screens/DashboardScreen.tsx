@@ -4,6 +4,9 @@ import { ActivityIndicator, Card, FAB } from 'react-native-paper';
 import { getAbastecimentos, calculateMediaConsumo } from '../database/abastecimentoService';
 import { Abastecimento } from '../types/abastecimento';
 import { colors } from '../theme';
+import { getVeiculoAtivo } from '../database/veiculoService';
+import { Veiculo } from '../types/veiculo';
+import { NovoAbastecimentoModal } from './NovoAbastecimentoModal';
 
 interface DashboardScreenProps {
   navigation: any;
@@ -12,6 +15,8 @@ interface DashboardScreenProps {
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [veiculoAtivo, setVeiculoAtivo] = useState<Veiculo | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   const [stats, setStats] = useState({
     mediaGeral: null as number | null,
     mediaUltimoAbastecimento: null as number | null,
@@ -19,36 +24,41 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
     totalGasto: 0,
   });
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        // Carregar abastecimentos
-        const data = await getAbastecimentos();
-        console.log('Abastecimentos carregados:', data.length);
-        setAbastecimentos(data);
-        
-        // Calcular estatísticas
-        const mediaConsumo = await calculateMediaConsumo();
-        
-        const totalGasto = data.reduce(
-          (total, item) => total + item.valorTotal,
-          0
-        );
-        
-        setStats({
-          mediaGeral: mediaConsumo.mediaGeral,
-          mediaUltimoAbastecimento: mediaConsumo.ultimoAbastecimento,
-          totalAbastecimentos: data.length,
-          totalGasto,
-        });
-      } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      
+      // Carregar veículo ativo
+      const veiculo = await getVeiculoAtivo();
+      setVeiculoAtivo(veiculo);
+      
+      // Carregar abastecimentos
+      const data = await getAbastecimentos();
+      console.log('Abastecimentos carregados:', data.length);
+      setAbastecimentos(data);
+      
+      // Calcular estatísticas
+      const mediaConsumo = await calculateMediaConsumo();
+      
+      const totalGasto = data.reduce(
+        (total, item) => total + item.valorTotal,
+        0
+      );
+      
+      setStats({
+        mediaGeral: mediaConsumo.mediaGeral,
+        mediaUltimoAbastecimento: mediaConsumo.ultimoAbastecimento,
+        totalAbastecimentos: data.length,
+        totalGasto,
+      });
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -65,8 +75,21 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
 
   const handleAddPress = () => {
     console.log('Adicionar novo abastecimento');
-    // Aqui você adicionaria a navegação para a tela de adicionar abastecimento
-    // navigation.navigate('NovoAbastecimento');
+    setModalVisible(true);
+  };
+
+  const handleModalDismiss = () => {
+    setModalVisible(false);
+  };
+  
+  const handleModalSuccess = () => {
+    setModalVisible(false);
+    loadData(); // Recarregar os dados após adicionar um novo abastecimento
+  };
+
+  const handleSettingsPress = () => {
+    console.log('Abrir configurações de veículos');
+    navigation.navigate('Veiculos');
   };
 
   const handleItemPress = (item: Abastecimento) => {
@@ -100,6 +123,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
     <Card style={styles.statsCard}>
       <Card.Content>
         <Text style={styles.statsTitle}>Resumo de Desempenho</Text>
+        
+        {veiculoAtivo && (
+          <Text style={styles.veiculoAtivo}>
+            {veiculoAtivo.apelido} ({veiculoAtivo.modelo})
+          </Text>
+        )}
         
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
@@ -166,10 +195,23 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
       </ScrollView>
       
       <FAB
-        style={styles.fab}
+        style={styles.fabAdd}
         icon="plus"
         color={colors.white}
         onPress={handleAddPress}
+      />
+      
+      <FAB
+        style={styles.fabSettings}
+        icon="car-settings"
+        color={colors.white}
+        onPress={handleSettingsPress}
+      />
+
+      <NovoAbastecimentoModal
+        visible={modalVisible}
+        onDismiss={handleModalDismiss}
+        onSuccess={handleModalSuccess}
       />
     </View>
   );
@@ -245,6 +287,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
   },
+  veiculoAtivo: {
+    fontSize: 14,
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontWeight: 'bold',
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -265,11 +314,18 @@ const styles = StyleSheet.create({
     color: colors.lightText,
     textAlign: 'center',
   },
-  fab: {
+  fabAdd: {
     position: 'absolute',
     margin: 16,
     right: 0,
     bottom: 0,
     backgroundColor: colors.primary,
+  },
+  fabSettings: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 72, // Posicionar acima do outro FAB
+    backgroundColor: colors.secondary || '#6200ee',
   },
 }); 
