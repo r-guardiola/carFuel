@@ -34,6 +34,17 @@
           "enableFTS": true
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "85ae43ac-331f-4654-aa9f-41b0e48a254b"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/85ae43ac-331f-4654-aa9f-41b0e48a254b"
+    }
   }
 }

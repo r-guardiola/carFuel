@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Alert } from 'react-native';
-import { ActivityIndicator, Button, Card, Dialog, FAB, IconButton, Portal, TextInput } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, Dialog, FAB, IconButton, Portal, TextInput, RadioButton } from 'react-native-paper';
 import { colors } from '../theme';
 import { Veiculo } from '../types/veiculo';
 import { deleteVeiculo, getVeiculos, saveVeiculo, setVeiculoAtivo } from '../database/veiculoService';
@@ -87,6 +87,9 @@ export const VeiculosScreen: React.FC<VeiculosScreenProps> = ({ navigation }) =>
         return;
       }
 
+      // Verificar se a lista de veículos está vazia (primeiro veículo)
+      const isFirstVeiculo = veiculos.length === 0 && !editingVeiculo.id;
+
       const veiculoData = {
         ...(editingVeiculo.id ? { id: editingVeiculo.id } : {}),
         apelido,
@@ -95,12 +98,26 @@ export const VeiculosScreen: React.FC<VeiculosScreenProps> = ({ navigation }) =>
         cor,
         tipoCombustivel,
         tanqueCapacidade: capacidadeNum,
-        isAtivo: editingVeiculo.isAtivo || false
+        isAtivo: isFirstVeiculo ? true : (editingVeiculo.isAtivo || false)
       };
 
-      await saveVeiculo(veiculoData);
+      const savedVeiculo = await saveVeiculo(veiculoData);
+      
+      // Se for o primeiro veículo, definir como ativo
+      if (isFirstVeiculo) {
+        await setVeiculoAtivo(savedVeiculo.id);
+      }
+      
       hideDialog();
       await loadVeiculos();
+      
+      // Se for o primeiro veículo, redirecionar para o Dashboard
+      if (isFirstVeiculo) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Dashboard' }],
+        });
+      }
     } catch (error) {
       console.error('Erro ao salvar veículo:', error);
       Alert.alert('Erro', 'Não foi possível salvar o veículo.');
@@ -134,7 +151,12 @@ export const VeiculosScreen: React.FC<VeiculosScreenProps> = ({ navigation }) =>
     try {
       await setVeiculoAtivo(id);
       await loadVeiculos();
-      Alert.alert('Sucesso', 'Veículo definido como ativo.');
+      
+      // Redirecionar para o Dashboard após definir o veículo como ativo
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Dashboard' }],
+      });
     } catch (error) {
       console.error('Erro ao definir veículo ativo:', error);
       Alert.alert('Erro', 'Não foi possível definir o veículo como ativo.');
@@ -178,7 +200,7 @@ export const VeiculosScreen: React.FC<VeiculosScreenProps> = ({ navigation }) =>
                 
                 <View style={styles.cardRow}>
                   <Text>Cor: {veiculo.cor}</Text>
-                  <Text>Combustível: {veiculo.tipoCombustivel}</Text>
+                  <Text>Combustível: {veiculo.tipoCombustivel.charAt(0).toUpperCase() + veiculo.tipoCombustivel.slice(1)}</Text>
                 </View>
                 
                 <Text>Capacidade do tanque: {veiculo.tanqueCapacidade}L</Text>
@@ -249,12 +271,38 @@ export const VeiculosScreen: React.FC<VeiculosScreenProps> = ({ navigation }) =>
               style={styles.input}
             />
             
-            <TextInput
-              label="Tipo de Combustível"
+            <Text style={styles.sectionTitle}>Tipo de Combustível</Text>
+            <RadioButton.Group
+              onValueChange={(value: string) => setTipoCombustivel(value as TipoCombustivel)}
               value={tipoCombustivel}
-              onChangeText={(text: string) => setTipoCombustivel(text as TipoCombustivel)}
-              style={styles.input}
-            />
+            >
+              <View style={styles.radioButtonContainer}>
+                <RadioButton.Item 
+                  label="Gasolina" 
+                  value="gasolina" 
+                  labelStyle={styles.radioLabel}
+                  style={styles.radioItem}
+                />
+                <RadioButton.Item 
+                  label="Álcool" 
+                  value="alcool" 
+                  labelStyle={styles.radioLabel}
+                  style={styles.radioItem}
+                />
+                <RadioButton.Item 
+                  label="Flex" 
+                  value="flex" 
+                  labelStyle={styles.radioLabel}
+                  style={styles.radioItem}
+                />
+                <RadioButton.Item 
+                  label="Diesel" 
+                  value="diesel" 
+                  labelStyle={styles.radioLabel}
+                  style={styles.radioItem}
+                />
+              </View>
+            </RadioButton.Group>
             
             <TextInput
               label="Capacidade do Tanque (L)"
@@ -361,5 +409,22 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  radioButtonContainer: {
+    flexDirection: 'column',
+  },
+  radioLabel: {
+    fontSize: 16,
+    color: colors.text,
+  },
+  radioItem: {
+    marginVertical: 0,
+    paddingVertical: 4,
   },
 }); 

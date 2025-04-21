@@ -16,16 +16,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('Veiculos');
   };
 
-  const handleSetupPress = () => {
-    navigation.navigate('Setup');
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.contentContainer}>
         <Text style={styles.title}>CarFuel</Text>
         <Text style={styles.subtitle}>Controle de abastecimentos</Text>
-        
+    
         <View style={styles.buttonContainer}>
           <Button
             mode="contained"
@@ -39,19 +35,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <Button
             mode="contained"
             icon="car-settings"
-            style={styles.button}
+            style={[styles.button, styles.lastButton]}
             onPress={handleVeiculosPress}
           >
             Meus Veículos
-          </Button>
-          
-          <Button
-            mode="outlined"
-            icon="cog"
-            style={[styles.button, styles.lastButton]}
-            onPress={handleSetupPress}
-          >
-            Configuração Inicial
           </Button>
         </View>
       </View>
@@ -71,10 +58,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: colors.primary,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 18,
@@ -84,12 +71,12 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     maxWidth: 300,
+    marginTop: 20,
   },
   button: {
     marginBottom: 16,
-    paddingVertical: 8,
   },
   lastButton: {
-    marginTop: 20,
+    marginBottom: 0,
   },
 }); 

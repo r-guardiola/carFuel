@@ -34,9 +34,14 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
   const [chequeiOleo, setChequeiOleo] = useState(false);
   const [useiAditivo, setUseiAditivo] = useState(false);
   const [observacoes, setObservacoes] = useState('');
-
+  
   // Últimos valores registrados
   const [ultimoKm, setUltimoKm] = useState<number | null>(null);
+
+  // Função para formatar números com separador de milhares
+  const formatNumber = (value: number): string => {
+    return Math.round(value).toLocaleString('pt-BR');
+  };
 
   useEffect(() => {
     const carregarVeiculo = async () => {
@@ -71,21 +76,56 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
     }
   }, [visible]);
 
-  // Atualiza o valor total quando o valor do litro ou a quantidade de litros muda
-  useEffect(() => {
-    if (valorLitro && litros) {
-      const total = parseFloat(valorLitro) * parseFloat(litros);
-      setValorTotal(total.toFixed(2));
+  // Funções para calcular os valores sem causar loop
+  const calcularValorTotal = (novoValorLitro: string, novosLitros: string) => {
+    try {
+      const valorLitroNum = parseFloat(novoValorLitro);
+      const litrosNum = parseFloat(novosLitros);
+      if (!isNaN(valorLitroNum) && !isNaN(litrosNum)) {
+        return (valorLitroNum * litrosNum).toFixed(2);
+      }
+    } catch (error) {
+      console.error('Erro ao calcular valor total:', error);
     }
-  }, [valorLitro, litros]);
+    return valorTotal;
+  };
 
-  // Atualiza a quantidade de litros quando o valor total e o valor do litro mudam
-  useEffect(() => {
-    if (valorTotal && valorLitro && parseFloat(valorLitro) > 0) {
-      const litrosCalculados = parseFloat(valorTotal) / parseFloat(valorLitro);
-      setLitros(litrosCalculados.toFixed(2));
+  const calcularLitros = (novoValorTotal: string, novoValorLitro: string) => {
+    try {
+      const valorTotalNum = parseFloat(novoValorTotal);
+      const valorLitroNum = parseFloat(novoValorLitro);
+      if (!isNaN(valorTotalNum) && !isNaN(valorLitroNum) && valorLitroNum > 0) {
+        return (valorTotalNum / valorLitroNum).toFixed(2);
+      }
+    } catch (error) {
+      console.error('Erro ao calcular litros:', error);
     }
-  }, [valorTotal, valorLitro]);
+    return litros;
+  };
+
+  const handleValorLitroChange = (text: string) => {
+    setValorLitro(text);
+    // Se houver um valor de litros, calcular o valor total
+    if (litros) {
+      setValorTotal(calcularValorTotal(text, litros));
+    }
+  };
+
+  const handleLitrosChange = (text: string) => {
+    setLitros(text);
+    // Se houver um valor por litro, calcular o valor total
+    if (valorLitro) {
+      setValorTotal(calcularValorTotal(valorLitro, text));
+    }
+  };
+
+  const handleValorTotalChange = (text: string) => {
+    setValorTotal(text);
+    // Se houver um valor por litro, calcular os litros
+    if (valorLitro && parseFloat(valorLitro) > 0) {
+      setLitros(calcularLitros(text, valorLitro));
+    }
+  };
 
   const limparFormulario = () => {
     setData(new Date());
@@ -114,13 +154,13 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
         return;
       }
 
-      const kmAtualNumber = parseFloat(kmAtual);
+      const kmAtualNumber = Math.round(parseFloat(kmAtual));
       
       // Validar se o KM atual é maior que o último registrado
       if (ultimoKm !== null && kmAtualNumber <= ultimoKm) {
         Alert.alert(
           'Atenção', 
-          `O KM atual (${kmAtualNumber}) deve ser maior que o último registrado (${ultimoKm})`
+          `O KM atual (${formatNumber(kmAtualNumber)}) deve ser maior que o último registrado (${formatNumber(ultimoKm)})`
         );
         return;
       }
@@ -131,26 +171,21 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
       const valorLitroNumber = parseFloat(valorLitro);
       const valorTotalNumber = parseFloat(valorTotal);
 
-      // Calcular km percorridos (se aplicável)
-      let kmPercorridos: number | undefined = undefined;
-      if (ultimoKm !== null && kmAtualNumber > ultimoKm) {
-        kmPercorridos = kmAtualNumber - ultimoKm;
-      }
+      // Não é mais necessário calcular kmPercorridos aqui, isso será feito em tempo de execução
 
-      // Criar o objeto abastecimento
+      // Criar o objeto de abastecimento
       const novoAbastecimento: Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt' | 'veiculoId'> = {
-        data: data,
+        data,
         valorLitro: valorLitroNumber,
         litros: litrosNumber,
         valorTotal: valorTotalNumber,
         tipoCombustivel: veiculoAtivo.tipoCombustivel,
         kmAtual: kmAtualNumber,
-        kmPercorridos: kmPercorridos,
         posto: posto || undefined,
-        tanqueCheio: tanqueCheio,
-        chequeiCalibragem: chequeiCalibragem,
-        chequeiOleo: chequeiOleo,
-        useiAditivo: useiAditivo,
+        tanqueCheio,
+        chequeiCalibragem,
+        chequeiOleo,
+        useiAditivo,
         observacoes: observacoes || undefined
       };
 
@@ -193,7 +228,7 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
               <TextInput
                 label="Valor por Litro (R$)"
                 value={valorLitro}
-                onChangeText={setValorLitro}
+                onChangeText={handleValorLitroChange}
                 keyboardType="decimal-pad"
                 style={styles.input}
               />
@@ -201,7 +236,7 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
               <TextInput
                 label="Litros"
                 value={litros}
-                onChangeText={setLitros}
+                onChangeText={handleLitrosChange}
                 keyboardType="decimal-pad"
                 style={styles.input}
               />
@@ -209,7 +244,7 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
               <TextInput
                 label="Valor Total (R$)"
                 value={valorTotal}
-                onChangeText={setValorTotal}
+                onChangeText={handleValorTotalChange}
                 keyboardType="decimal-pad"
                 style={styles.input}
               />
@@ -230,7 +265,7 @@ export const NovoAbastecimentoModal: React.FC<NovoAbastecimentoModalProps> = ({
               
               {ultimoKm !== null && (
                 <Text style={styles.infoText}>
-                  Último KM registrado: {ultimoKm} | Distância: {kmAtual ? (parseFloat(kmAtual) - ultimoKm).toFixed(1) : '0'} km
+                  Último KM registrado: {formatNumber(ultimoKm)} | Distância: {kmAtual ? formatNumber(parseFloat(kmAtual) - ultimoKm) : '0'} km
                 </Text>
               )}
               

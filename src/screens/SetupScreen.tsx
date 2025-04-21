@@ -42,7 +42,7 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ navigation }) => {
       setLoading(false);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: 'Dashboard' }],
       });
     } catch (error) {
       console.error('Erro ao salvar veículo:', error);

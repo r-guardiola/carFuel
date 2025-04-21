@@ -1,4 +1,4 @@
-export type TipoCombustivel = 'gasolina' | 'etanol' | 'diesel' | 'gnv';
+export type TipoCombustivel = 'gasolina' | 'alcool' | 'flex' | 'diesel';
 
 export interface Configuracao {
   id: string;

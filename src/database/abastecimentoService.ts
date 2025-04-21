@@ -112,9 +112,9 @@ export const insertAbastecimento = async (abastecimento: Omit<Abastecimento, 'id
     await database.runAsync(
       `INSERT INTO abastecimento (
         id, data, valorLitro, litros, valorTotal, tipoCombustivel, 
-        kmAtual, kmPercorridos, posto, tanqueCheio, chequeiCalibragem, 
+        kmAtual, posto, tanqueCheio, chequeiCalibragem, 
         chequeiOleo, useiAditivo, observacoes, veiculoId, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newAbastecimento.id,
         newAbastecimento.data.toISOString(),
@@ -123,7 +123,6 @@ export const insertAbastecimento = async (abastecimento: Omit<Abastecimento, 'id
         newAbastecimento.valorTotal,
         newAbastecimento.tipoCombustivel,
         newAbastecimento.kmAtual,
-        newAbastecimento.kmPercorridos || null,
         newAbastecimento.posto || null,
         newAbastecimento.tanqueCheio ? 1 : 0,
         newAbastecimento.chequeiCalibragem ? 1 : 0,
@@ -152,6 +151,103 @@ export const deleteAbastecimento = async (id: string): Promise<void> => {
   }
 };
 
+export const updateAbastecimento = async (id: string, abastecimento: Partial<Omit<Abastecimento, 'id' | 'createdAt' | 'updatedAt' | 'veiculoId'>>): Promise<Abastecimento> => {
+  try {
+    // Buscar o abastecimento atual para manter os campos não atualizados
+    const currentAbastecimento = await getAbastecimentoById(id);
+    
+    if (!currentAbastecimento) {
+      throw new Error(`Abastecimento com id ${id} não encontrado`);
+    }
+    
+    const now = new Date();
+    const updatedAbastecimento = {
+      ...currentAbastecimento,
+      ...abastecimento,
+      updatedAt: now
+    };
+    
+    await database.runAsync(
+      `UPDATE abastecimento SET 
+        data = ?, 
+        valorLitro = ?, 
+        litros = ?, 
+        valorTotal = ?, 
+        tipoCombustivel = ?, 
+        kmAtual = ?, 
+        posto = ?, 
+        tanqueCheio = ?, 
+        chequeiCalibragem = ?, 
+        chequeiOleo = ?, 
+        useiAditivo = ?, 
+        observacoes = ?,
+        updatedAt = ?
+      WHERE id = ?`,
+      [
+        updatedAbastecimento.data.toISOString(),
+        updatedAbastecimento.valorLitro,
+        updatedAbastecimento.litros,
+        updatedAbastecimento.valorTotal,
+        updatedAbastecimento.tipoCombustivel,
+        updatedAbastecimento.kmAtual,
+        updatedAbastecimento.posto || null,
+        updatedAbastecimento.tanqueCheio ? 1 : 0,
+        updatedAbastecimento.chequeiCalibragem ? 1 : 0,
+        updatedAbastecimento.chequeiOleo ? 1 : 0,
+        updatedAbastecimento.useiAditivo ? 1 : 0,
+        updatedAbastecimento.observacoes || null,
+        updatedAbastecimento.updatedAt.toISOString(),
+        id
+      ]
+    );
+    
+    return updatedAbastecimento;
+  } catch (error) {
+    console.error(`Erro ao atualizar abastecimento com id ${id}:`, error);
+    throw error;
+  }
+};
+
+// Função para calcular a quilometragem percorrida entre dois abastecimentos
+export const calcularKmPercorridos = (abastecimentoAtual: Abastecimento, abastecimentoAnterior: Abastecimento | null): number => {
+  if (!abastecimentoAnterior) {
+    return 0;
+  }
+  
+  return Math.round(abastecimentoAtual.kmAtual) - Math.round(abastecimentoAnterior.kmAtual);
+};
+
+// Função para calcular a quilometragem percorrida de um abastecimento específico
+export const getKmPercorridos = async (abastecimento: Abastecimento): Promise<number> => {
+  try {
+    // Busca o abastecimento anterior
+    const abastecimentosAnteriores = await database.getAllAsync<Abastecimento>(
+      'SELECT * FROM abastecimento WHERE data < ? AND veiculoId = ? ORDER BY data DESC LIMIT 1',
+      [abastecimento.data.toISOString(), abastecimento.veiculoId]
+    );
+    
+    if (abastecimentosAnteriores.length === 0) {
+      return 0;
+    }
+    
+    const abastecimentoAnterior = {
+      ...abastecimentosAnteriores[0],
+      data: new Date(abastecimentosAnteriores[0].data),
+      tanqueCheio: !!abastecimentosAnteriores[0].tanqueCheio,
+      chequeiCalibragem: !!abastecimentosAnteriores[0].chequeiCalibragem,
+      chequeiOleo: !!abastecimentosAnteriores[0].chequeiOleo,
+      useiAditivo: !!abastecimentosAnteriores[0].useiAditivo,
+      createdAt: new Date(abastecimentosAnteriores[0].createdAt),
+      updatedAt: new Date(abastecimentosAnteriores[0].updatedAt)
+    };
+    
+    return Math.round(abastecimento.kmAtual) - Math.round(abastecimentoAnterior.kmAtual);
+  } catch (error) {
+    console.error('Erro ao calcular km percorridos:', error);
+    return 0;
+  }
+};
+
 export const calculateMediaConsumo = async (): Promise<{
   mediaGeral: number | null;
   ultimoAbastecimento: number | null;
@@ -164,29 +260,37 @@ export const calculateMediaConsumo = async (): Promise<{
       return { mediaGeral: null, ultimoAbastecimento: null };
     }
     
-    // Busca todos os abastecimentos com km percorridos (ordenados por data)
+    // Busca todos os abastecimentos ordenados por data
     const abastecimentos = await database.getAllAsync<{
+      id: string;
+      data: string;
+      kmAtual: number;
       litros: number;
-      kmPercorridos: number;
+      veiculoId: string;
     }>(
-      'SELECT litros, kmPercorridos FROM abastecimento WHERE kmPercorridos IS NOT NULL AND veiculoId = ? ORDER BY data ASC',
+      'SELECT id, data, kmAtual, litros, veiculoId FROM abastecimento WHERE veiculoId = ? ORDER BY data ASC',
       [veiculoAtivo.id]
     );
     
-    if (abastecimentos.length === 0) {
+    if (abastecimentos.length <= 1) {
       return { mediaGeral: null, ultimoAbastecimento: null };
     }
     
-    // Média geral
-    const totalKm = abastecimentos.reduce((sum, a) => sum + a.kmPercorridos, 0);
-    const totalLitros = abastecimentos.reduce((sum, a) => sum + a.litros, 0);
+    const totalLitros = abastecimentos.slice(1).reduce((sum, a) => sum + a.litros, 0);
     
-    // Último abastecimento
-    const ultimo = abastecimentos[abastecimentos.length - 1];
+    // Calcular km percorridos total (do primeiro ao último abastecimento)
+    const totalKm = Math.round(abastecimentos[abastecimentos.length - 1].kmAtual) - 
+                  Math.round(abastecimentos[0].kmAtual);
+    
+    // Calcular km percorridos do último abastecimento
+    const ultimoAbastecimento = abastecimentos[abastecimentos.length - 1];
+    const penultimoAbastecimento = abastecimentos[abastecimentos.length - 2];
+    const kmUltimoAbastecimento = Math.round(ultimoAbastecimento.kmAtual) - 
+                                Math.round(penultimoAbastecimento.kmAtual);
     
     return {
       mediaGeral: totalKm / totalLitros,
-      ultimoAbastecimento: ultimo.kmPercorridos / ultimo.litros
+      ultimoAbastecimento: kmUltimoAbastecimento / ultimoAbastecimento.litros
     };
   } catch (error) {
     console.error('Erro ao calcular média de consumo:', error);

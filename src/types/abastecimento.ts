@@ -8,7 +8,6 @@ export interface Abastecimento {
   valorTotal: number;
   tipoCombustivel: TipoCombustivel;
   kmAtual: number;
-  kmPercorridos?: number;
   posto?: string;
   tanqueCheio: boolean;
   chequeiCalibragem: boolean;

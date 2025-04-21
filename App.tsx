@@ -9,6 +9,7 @@ import { initDatabase } from './src/database/database';
 import { ensureDefaultConfiguracao } from './src/database/configuracaoService';
 import { ensureDefaultVeiculo } from './src/database/veiculoService';
 import { updateAbastecimentosLegados } from './src/database/abastecimentoService';
+import { executeMigrations } from './src/database/migration';
 import { colors } from './src/theme';
 
 // Habilitar o react-native-screens para melhor performance
@@ -24,6 +25,10 @@ export default function App() {
         // Inicializar o banco de dados
         console.log('Inicializando banco de dados...');
         await initDatabase();
+        
+        // Executar migrações de banco de dados
+        console.log('Executando migrações de banco de dados...');
+        await executeMigrations();
         
         // Garantir que temos uma configuração padrão
         console.log('Inicializando configurações padrão...');

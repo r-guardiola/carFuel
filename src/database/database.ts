@@ -162,7 +162,6 @@ export const initDatabase = async (): Promise<void> => {
         valorTotal REAL NOT NULL,
         tipoCombustivel TEXT NOT NULL,
         kmAtual REAL NOT NULL,
-        kmPercorridos REAL,
         posto TEXT,
         tanqueCheio INTEGER NOT NULL DEFAULT 0,
         chequeiCalibragem INTEGER NOT NULL DEFAULT 0,
