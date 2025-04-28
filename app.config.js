@@ -5,7 +5,7 @@ module.exports = {
   orientation: "portrait",
   icon: "./assets/icon.png",
   splash: {
-    image: "./assets/splash.png",
+    image: "./assets/splash-icon.png",
     resizeMode: "contain",
     backgroundColor: "#ffffff"
   },
@@ -23,14 +23,14 @@ module.exports = {
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#FFFFFF"
     },
-    package: "com.carfuel.app"
+    package: "com.meuapp.carfuel"
   },
   web: {
     favicon: "./assets/favicon.png"
   },
   extra: {
     eas: {
-      projectId: "your-project-id"
+      projectId: "b5b6e12c-bd23-424d-b114-8d1ee6c561a4"
     }
   },
   androidNavigationBar: {
@@ -39,11 +39,5 @@ module.exports = {
   androidStatusBar: {
     backgroundColor: "#FFFFFF",
     barStyle: "dark-content"
-  },
-  // Configuração para Windows
-  expo: {
-    android: {
-      adbPath: process.env.ANDROID_HOME ? `${process.env.ANDROID_HOME}\\platform-tools\\adb.exe` : undefined
-    }
   }
 }; 

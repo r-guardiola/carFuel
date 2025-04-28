@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "carFuel",
-    "slug": "carFuel",
+    "name": "CarFuel",
+    "slug": "carfuel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -37,7 +37,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "85ae43ac-331f-4654-aa9f-41b0e48a254b"
+        "projectId": "b5b6e12c-bd23-424d-b114-8d1ee6c561a4"
       }
     },
     "runtimeVersion": {
