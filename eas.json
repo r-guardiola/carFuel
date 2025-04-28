@@ -10,18 +10,14 @@
       "android": {
         "buildType": "apk"
       },
-      "env": {
-        "EAS_NO_VCS": "1"
-      }
+      "autoIncrement": true
     },
     "production": {
       "distribution": "store",
       "android": {
         "buildType": "apk"
       },
-      "env": {
-        "EAS_NO_VCS": "1"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {
