@@ -9,12 +9,18 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EAS_NO_VCS": "1"
       }
     },
     "production": {
       "distribution": "store",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EAS_NO_VCS": "1"
       }
     }
   },
