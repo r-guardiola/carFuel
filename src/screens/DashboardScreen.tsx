@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { ActivityIndicator, Card, FAB, IconButton, Menu, Text as PaperText } from 'react-native-paper';
-import { getAbastecimentos, calculateMediaConsumo } from '../database/abastecimentoService';
+import { getAbastecimentos, calculateMediaConsumo, calcularConsumoEntreTanquesCheios } from '../database/abastecimentoService';
 import { Abastecimento } from '../types/abastecimento';
 import { getVeiculoAtivo } from '../database/veiculoService';
 import { Veiculo } from '../types/veiculo';
@@ -311,21 +311,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
     setEditModalVisible(true);
   };
 
-  const renderAbastecimentoItem = ({ item, index }: { item: Abastecimento; index: number }) => {
-    // Obter o abastecimento posterior cronologicamente (que é o anterior no array,
-    // já que a lista está ordenada dos mais recentes para os mais antigos)
-    const abastecimentoAnterior = index < abastecimentos.length - 1 ? abastecimentos[index + 1] : null;
-    
-    return (
-      <AbastecimentoCard
-        abastecimento={item}
-        abastecimentoAnterior={abastecimentoAnterior}
-        onPress={handleItemPress}
-        onEdit={handleEditAbastecimento}
-      />
-    );
-  };
-
   const renderStatsCard = () => {
     return (
       <Card style={[styles.statsCard, { backgroundColor: colors.card }]}>
@@ -572,11 +557,60 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) 
           </View>
         ) : (
           <View style={styles.listContainer}>
-            {abastecimentos.map((item, index) => (
-              <View key={item.id}>
-                {renderAbastecimentoItem({ item, index })}
-              </View>
-            ))}
+            {/* Mostrar APENAS abastecimentos de tanque cheio como cards principais */}
+            {abastecimentos
+              .filter(a => a.tanqueCheio) // Filtrar apenas tanque cheio
+              .map((item) => {
+                // Encontrar o abastecimento de tanque cheio anterior, se existir
+                const abastecimentosTanqueCheio = abastecimentos
+                  .filter(a => a.tanqueCheio)
+                  .sort((a, b) => b.data.getTime() - a.data.getTime()); // Ordenar por data decrescente
+                
+                const currentIndex = abastecimentosTanqueCheio.findIndex(a => a.id === item.id);
+                const abastecimentoAnterior = currentIndex >= 0 && currentIndex < abastecimentosTanqueCheio.length - 1 ? 
+                  abastecimentosTanqueCheio[currentIndex + 1] : null;
+                
+                // Encontrar todos os abastecimentos parciais entre este tanque cheio e o anterior
+                const abastecimentosAssociados = abastecimentoAnterior ?
+                  abastecimentos.filter(a => 
+                    !a.tanqueCheio && 
+                    a.data < item.data && 
+                    a.data > abastecimentoAnterior.data
+                  ).sort((a, b) => a.data.getTime() - b.data.getTime()) // Ordenar por data crescente
+                  : [];
+                
+                // Calcular métricas de consumo para abastecimentos de tanque cheio
+                let consumoInfo = undefined;
+                
+                if (abastecimentoAnterior) {
+                  const kmPercorridos = item.kmAtual - abastecimentoAnterior.kmAtual;
+                  const litrosConsumidos = item.litros + 
+                    abastecimentosAssociados.reduce((total, a) => total + a.litros, 0);
+                  const mediaConsumo = kmPercorridos > 0 ? kmPercorridos / litrosConsumidos : 0;
+                  const valorTotal = item.valorTotal + 
+                    abastecimentosAssociados.reduce((total, a) => total + a.valorTotal, 0);
+                  const precoPorKm = kmPercorridos > 0 ? valorTotal / kmPercorridos : 0;
+                  
+                  consumoInfo = {
+                    kmPercorridos,
+                    litrosConsumidos,
+                    mediaConsumo,
+                    precoPorKm
+                  };
+                }
+                
+                return (
+                  <AbastecimentoCard
+                    key={item.id}
+                    abastecimento={item}
+                    abastecimentoAnterior={abastecimentoAnterior}
+                    abastecimentosAssociados={abastecimentosAssociados}
+                    consumoInfo={consumoInfo}
+                    onPress={handleItemPress}
+                    onEdit={handleEditAbastecimento}
+                  />
+                );
+              })}
           </View>
         )}
       </ScrollView>

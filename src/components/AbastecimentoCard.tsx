@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { Card, Divider, IconButton } from 'react-native-paper';
+import { Card, Divider, IconButton, DataTable } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Abastecimento } from '../types/abastecimento';
 import { useTheme } from '../context/ThemeContext';
@@ -8,6 +8,13 @@ import { useTheme } from '../context/ThemeContext';
 interface AbastecimentoCardProps {
   abastecimento: Abastecimento;
   abastecimentoAnterior?: Abastecimento | null;
+  abastecimentosAssociados?: Abastecimento[];
+  consumoInfo?: {
+    kmPercorridos: number;
+    litrosConsumidos: number;
+    mediaConsumo: number;
+    precoPorKm: number;
+  };
   onPress?: (abastecimento: Abastecimento) => void;
   onEdit?: (abastecimento: Abastecimento) => void;
 }
@@ -15,21 +22,28 @@ interface AbastecimentoCardProps {
 export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
   abastecimento,
   abastecimentoAnterior,
+  abastecimentosAssociados = [],
+  consumoInfo,
   onPress,
   onEdit,
 }) => {
   const { colors } = useTheme();
   
-  // Calcular km percorridos se tiver abastecimento anterior
-  const kmPercorridos = abastecimentoAnterior 
+  // Usar os valores calculados de consumo se fornecidos, caso contrário calcular aqui
+  const kmPercorridos = consumoInfo?.kmPercorridos || (abastecimentoAnterior 
     ? abastecimento.kmAtual - abastecimentoAnterior.kmAtual
-    : 0;
+    : 0);
   
-  // Calcular média de consumo
-  const mediaConsumo = kmPercorridos > 0 ? kmPercorridos / abastecimento.litros : 0;
+  // Total de litros (incluindo abastecimentos associados)
+  const totalLitros = consumoInfo?.litrosConsumidos || abastecimento.litros;
   
-  // Calcular preço por Km
-  const precoPorKm = kmPercorridos > 0 ? abastecimento.valorTotal / kmPercorridos : 0;
+  // Média de consumo
+  const mediaConsumo = consumoInfo?.mediaConsumo || (kmPercorridos > 0 ? kmPercorridos / totalLitros : 0);
+  
+  // Preço por km
+  const valorTotal = abastecimento.valorTotal + 
+    abastecimentosAssociados.reduce((total, item) => total + item.valorTotal, 0);
+  const precoPorKm = consumoInfo?.precoPorKm || (kmPercorridos > 0 ? valorTotal / kmPercorridos : 0);
 
   const formatDate = (date: Date): string => {
     const day = date.getDate().toString().padStart(2, '0');
@@ -80,6 +94,8 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
       borderRadius: 12,
       elevation: 4,
       backgroundColor: colors.card,
+      borderWidth: abastecimento.tanqueCheio ? 2 : 0,
+      borderColor: abastecimento.tanqueCheio ? colors.primary + '50' : 'transparent',
     },
     header: {
       flexDirection: 'row',
@@ -194,66 +210,72 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
       fontSize: 12,
       color: colors.text,
     },
+    abastecimentosAssociadosContainer: {
+      marginTop: 12,
+      marginBottom: 8,
+    },
+    abastecimentosAssociadosTitle: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    dataTable: {
+      backgroundColor: colors.background,
+      borderRadius: 8,
+    },
+    tableHeader: {
+      backgroundColor: colors.primary + '20',
+    },
+    tableHeaderText: {
+      color: colors.text,
+      fontWeight: 'bold',
+      fontSize: 13,
+    },
+    tableCell: {
+      color: colors.text,
+      fontSize: 13,
+    },
+    totalRow: {
+      backgroundColor: colors.primary + '15',
+      fontWeight: 'bold',
+    },
+    tableRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    tableEditButton: {
+      padding: 0,
+      margin: 0,
+      width: 24,
+      height: 24,
+    },
   });
 
   return (
-    <TouchableOpacity onPress={handlePress} style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 16 }}>
       <Card style={styles.card}>
         <Card.Content>
           <View style={styles.header}>
             <View>
-              <Text style={styles.date}>{formatDate(abastecimento.data)} {formatTime(abastecimento.data)}</Text>
+              <Text style={styles.date}>
+                {formatDate(abastecimento.data)} {formatTime(abastecimento.data)}
+                {abastecimento.tanqueCheio && " "}
+                {abastecimento.tanqueCheio && (
+                  <Icon name="check-circle" size={14} color={colors.primary} />
+                )}
+              </Text>
               {abastecimento.posto && (
                 <Text style={styles.posto}>{abastecimento.posto}</Text>
               )}
-            </View>
-            <View style={styles.headerActions}>
-              <IconButton
-                icon="pencil"
-                size={20}
-                onPress={handleEdit}
-                style={styles.editButton}
-              />
-              <View style={styles.valueContainer}>
-                <Text style={styles.value}>{formatCurrency(abastecimento.valorTotal)}</Text>
-              </View>
             </View>
           </View>
           
           <Divider style={styles.divider} />
           
-          <View style={styles.detailsContainer}>
-            <View style={styles.detailItem}>
-              <View style={styles.detailLabelContainer}>
-                <Icon name="gas-station" size={14} color={colors.primary} style={styles.detailIcon} />
-                <Text style={styles.detailLabel}>Litros</Text>
-              </View>
-              <Text style={styles.detailValue}>{abastecimento.litros.toFixed(2)}</Text>
-            </View>
-            
-            <View style={styles.detailItem}>
-              <View style={styles.detailLabelContainer}>
-                <Icon name="cash" size={14} color={colors.primary} style={styles.detailIcon} />
-                <Text style={styles.detailLabel}>Preço/L</Text>
-              </View>
-              <Text style={styles.detailValue}>
-                {formatCurrency(abastecimento.valorLitro)}
-              </Text>
-            </View>
-
-            <View style={styles.detailItem}>
-              <View style={styles.detailLabelContainer}>
-                <Icon name="speedometer" size={14} color={colors.primary} style={styles.detailIcon} />
-                <Text style={styles.detailLabel}>Km Atual</Text>
-              </View>
-              <Text style={styles.detailValue}>
-                {formatNumber(abastecimento.kmAtual)} km
-              </Text>
-            </View>
-          </View>
-
-          {kmPercorridos > 0 && (
-            <View style={styles.consumoContainer}>
+          {/* Mostrar dados de consumo no topo quando temos km percorridos */}
+          {kmPercorridos > 0 && abastecimento.tanqueCheio && (
+            <View style={[styles.consumoContainer, abastecimentosAssociados.length > 0 ? { backgroundColor: colors.primary + '15' } : {}]}>
               <View style={styles.consumoItem}>
                 <View style={styles.consumoLabelContainer}>
                   <Icon name="road" size={14} color={colors.primary} style={styles.consumoIcon} />
@@ -267,11 +289,18 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
               <View style={styles.consumoItem}>
                 <View style={styles.consumoLabelContainer}>
                   <Icon name="fuel-cell" size={14} color={colors.primary} style={styles.consumoIcon} />
-                  <Text style={styles.consumoLabel}>Média</Text>
+                  <Text style={styles.consumoLabel}>
+                    Média{abastecimentosAssociados.length > 0 ? " (total)" : ""}
+                  </Text>
                 </View>
-                <Text style={styles.consumoValue}>
+                <Text style={[styles.consumoValue, { color: abastecimentosAssociados.length > 0 ? colors.primary : colors.text }]}>
                   {mediaConsumo.toFixed(2)} km/L
                 </Text>
+                {abastecimentosAssociados.length > 0 && (
+                  <Text style={{ fontSize: 10, color: colors.primary }}>
+                    Total: {totalLitros.toFixed(2)}L
+                  </Text>
+                )}
               </View>
 
               <View style={styles.consumoItem}>
@@ -283,16 +312,133 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
                   {formatCurrency(precoPorKm)}
                 </Text>
               </View>
+              
+              <View style={styles.consumoItem}>
+                <View style={styles.consumoLabelContainer}>
+                  <Icon name="speedometer" size={14} color={colors.primary} style={styles.consumoIcon} />
+                  <Text style={styles.consumoLabel}>Hodômetro</Text>
+                </View>
+                <Text style={styles.consumoValue}>
+                  {formatNumber(abastecimento.kmAtual)} km
+                </Text>
+              </View>
             </View>
           )}
+          
+          {/* Tabela com todos os abastecimentos (principal + parciais) */}
+          <View style={styles.abastecimentosAssociadosContainer}>
+            <Text style={styles.abastecimentosAssociadosTitle}>
+              {abastecimentosAssociados.length > 0 
+                ? `Todos os Abastecimentos (${abastecimentosAssociados.length + 1})`
+                : 'Detalhes do Abastecimento'}
+            </Text>
+            <DataTable style={styles.dataTable}>
+              <DataTable.Header style={styles.tableHeader}>
+                <DataTable.Title style={{ flex: 1.2 }}><Text style={styles.tableHeaderText}>Data</Text></DataTable.Title>
+                <DataTable.Title numeric style={{ flex: 0.8 }}><Text style={styles.tableHeaderText}>Litros</Text></DataTable.Title>
+                <DataTable.Title numeric style={{ flex: 1 }}><Text style={styles.tableHeaderText}>Preço/L</Text></DataTable.Title>
+                <DataTable.Title numeric style={{ flex: 1 }}><Text style={styles.tableHeaderText}>Total</Text></DataTable.Title>
+                <DataTable.Title style={{ flex: 1 }}><Text style={styles.tableHeaderText}>Tipo</Text></DataTable.Title>
+                <DataTable.Title style={{ flex: 0.5 }}><Text style={styles.tableHeaderText}></Text></DataTable.Title>
+              </DataTable.Header>
 
+              {/* Primeiro, mostrar o abastecimento principal (tanque cheio) */}
+              <DataTable.Row style={{ backgroundColor: colors.primary + '15' }}>
+                <DataTable.Cell style={{ flex: 1.2 }}>
+                  <Text style={[styles.tableCell, { fontWeight: 'bold' }]}>{formatDate(abastecimento.data)}</Text>
+                </DataTable.Cell>
+                <DataTable.Cell numeric style={{ flex: 0.8 }}>
+                  <Text style={[styles.tableCell, { fontWeight: 'bold' }]}>{abastecimento.litros.toFixed(2)}</Text>
+                </DataTable.Cell>
+                <DataTable.Cell numeric style={{ flex: 1 }}>
+                  <Text style={[styles.tableCell, { fontWeight: 'bold' }]}>{formatCurrency(abastecimento.valorLitro)}</Text>
+                </DataTable.Cell>
+                <DataTable.Cell numeric style={{ flex: 1 }}>
+                  <Text style={[styles.tableCell, { fontWeight: 'bold' }]}>{formatCurrency(abastecimento.valorTotal)}</Text>
+                </DataTable.Cell>
+                <DataTable.Cell style={{ flex: 1 }}>
+                  {abastecimento.tanqueCheio ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Icon name="gas-station" size={14} color={colors.primary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.tableCell, { color: colors.primary, fontWeight: 'bold', fontSize: 12 }]}>Tanque Cheio</Text>
+                    </View>
+                  ) : (
+                    <Text>-</Text>
+                  )}
+                </DataTable.Cell>
+                <DataTable.Cell style={{ flex: 0.5 }}>
+                  <IconButton
+                    icon="pencil"
+                    size={16}
+                    iconColor={colors.primary}
+                    style={styles.tableEditButton}
+                    onPress={handleEdit}
+                  />
+                </DataTable.Cell>
+              </DataTable.Row>
+
+              {/* Depois, mostrar os abastecimentos parciais */}
+              {abastecimentosAssociados.map((item) => (
+                <DataTable.Row key={item.id}>
+                  <DataTable.Cell style={{ flex: 1.2 }}>
+                    <Text style={styles.tableCell}>{formatDate(item.data)}</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 0.8 }}>
+                    <Text style={styles.tableCell}>{item.litros.toFixed(2)}</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 1 }}>
+                    <Text style={styles.tableCell}>{formatCurrency(item.valorLitro)}</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 1 }}>
+                    <Text style={styles.tableCell}>{formatCurrency(item.valorTotal)}</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell style={{ flex: 1 }}>
+                    <Text style={[styles.tableCell, { color: colors.lightText, fontSize: 12 }]}>Parcial</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell style={{ flex: 0.5 }}>
+                    <IconButton
+                      icon="pencil"
+                      size={16}
+                      iconColor={colors.primary}
+                      style={styles.tableEditButton}
+                      onPress={() => onEdit && onEdit(item)}
+                    />
+                  </DataTable.Cell>
+                </DataTable.Row>
+              ))}
+
+              {/* Mostrar linha de total se houver abastecimentos parciais */}
+              {abastecimentosAssociados.length > 0 && (
+                <DataTable.Row style={[styles.totalRow, { backgroundColor: colors.primary + '25' }]}>
+                  <DataTable.Cell style={{ flex: 1.2 }}>
+                    <Text style={[styles.tableCell, {fontWeight: 'bold', color: colors.primary}]}>TOTAL</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 0.8 }}>
+                    <Text style={[styles.tableCell, {fontWeight: 'bold', color: colors.primary}]}>
+                      {(abastecimentosAssociados.reduce((sum, item) => sum + item.litros, 0) + abastecimento.litros).toFixed(2)}
+                    </Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 1 }}>
+                    <Text style={[styles.tableCell, {fontWeight: 'bold', color: colors.primary}]}>-</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell numeric style={{ flex: 1 }}>
+                    <Text style={[styles.tableCell, {fontWeight: 'bold', color: colors.primary}]}>
+                      {formatCurrency(abastecimentosAssociados.reduce((sum, item) => sum + item.valorTotal, 0) + abastecimento.valorTotal)}
+                    </Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell style={{ flex: 1 }}>
+                    <Text>-</Text>
+                  </DataTable.Cell>
+                  <DataTable.Cell style={{ flex: 0.5 }}>
+                    <Text>-</Text>
+                  </DataTable.Cell>
+                </DataTable.Row>
+              )}
+            </DataTable>
+          </View>
+
+          {/* Área de tags para indicadores adicionais */}
           <View style={styles.tagsContainer}>
-            {abastecimento.tanqueCheio && (
-              <View style={styles.tag}>
-                <Icon name="gas-station" size={12} color={colors.text} style={styles.tagIcon} />
-                <Text style={styles.tagText}>Tanque Cheio</Text>
-              </View>
-            )}
             {abastecimento.chequeiCalibragem && (
               <View style={styles.tag}>
                 <Icon name="car-tire-alert" size={12} color={colors.text} style={styles.tagIcon} />
@@ -314,6 +460,6 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
           </View>
         </Card.Content>
       </Card>
-    </TouchableOpacity>
+    </View>
   );
 }; 

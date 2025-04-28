@@ -267,8 +267,9 @@ export const calculateMediaConsumo = async (): Promise<{
       kmAtual: number;
       litros: number;
       veiculoId: string;
+      tanqueCheio: number;
     }>(
-      'SELECT id, data, kmAtual, litros, veiculoId FROM abastecimento WHERE veiculoId = ? ORDER BY data ASC',
+      'SELECT id, data, kmAtual, litros, veiculoId, tanqueCheio FROM abastecimento WHERE veiculoId = ? ORDER BY data ASC',
       [veiculoAtivo.id]
     );
     
@@ -276,24 +277,163 @@ export const calculateMediaConsumo = async (): Promise<{
       return { mediaGeral: null, ultimoAbastecimento: null };
     }
     
-    const totalLitros = abastecimentos.slice(1).reduce((sum, a) => sum + a.litros, 0);
+    // Calcular média geral considerando apenas abastecimentos entre tanques cheios
+    let mediaGeral = null;
+    let totalKmPercorridos = 0;
+    let totalLitrosConsumidos = 0;
+    let abastecimentosTanqueCheio = abastecimentos.filter(a => !!a.tanqueCheio);
     
-    // Calcular km percorridos total (do primeiro ao último abastecimento)
-    const totalKm = Math.round(abastecimentos[abastecimentos.length - 1].kmAtual) - 
-                  Math.round(abastecimentos[0].kmAtual);
+    // Precisamos de pelo menos dois abastecimentos de tanque cheio para calcular
+    if (abastecimentosTanqueCheio.length >= 2) {
+      for (let i = 1; i < abastecimentosTanqueCheio.length; i++) {
+        const abastecimentoAtual = abastecimentosTanqueCheio[i];
+        const abastecimentoAnterior = abastecimentosTanqueCheio[i-1];
+        
+        // Calcular km percorridos entre estes dois abastecimentos de tanque cheio
+        const kmPercorridos = Math.round(abastecimentoAtual.kmAtual) - 
+                            Math.round(abastecimentoAnterior.kmAtual);
+        
+        // Acumular litros de todos os abastecimentos entre estes dois tanques cheios (inclusive o atual)
+        let litrosConsumidos = 0;
+        
+        // Encontrar todos os abastecimentos entre o tanque cheio anterior e o atual (inclusive o atual)
+        const abastecimentosIntermediarios = abastecimentos.filter(a => {
+          const dataAbastecimento = new Date(a.data);
+          return dataAbastecimento >= new Date(abastecimentoAnterior.data) && 
+                 dataAbastecimento <= new Date(abastecimentoAtual.data) &&
+                 dataAbastecimento > new Date(abastecimentoAnterior.data); // Excluir o abastecimento anterior
+        });
+        
+        litrosConsumidos = abastecimentosIntermediarios.reduce((total, a) => total + a.litros, 0);
+        
+        totalKmPercorridos += kmPercorridos;
+        totalLitrosConsumidos += litrosConsumidos;
+      }
+      
+      mediaGeral = totalKmPercorridos / totalLitrosConsumidos;
+    }
     
-    // Calcular km percorridos do último abastecimento
-    const ultimoAbastecimento = abastecimentos[abastecimentos.length - 1];
-    const penultimoAbastecimento = abastecimentos[abastecimentos.length - 2];
-    const kmUltimoAbastecimento = Math.round(ultimoAbastecimento.kmAtual) - 
-                                Math.round(penultimoAbastecimento.kmAtual);
+    // Calcular média do último abastecimento (entre os dois últimos tanques cheios)
+    let mediaUltimoAbastecimento = null;
+    
+    if (abastecimentosTanqueCheio.length >= 2) {
+      const ultimoTanqueCheio = abastecimentosTanqueCheio[abastecimentosTanqueCheio.length - 1];
+      const penultimoTanqueCheio = abastecimentosTanqueCheio[abastecimentosTanqueCheio.length - 2];
+      
+      const kmUltimoAbastecimento = Math.round(ultimoTanqueCheio.kmAtual) - 
+                                  Math.round(penultimoTanqueCheio.kmAtual);
+      
+      // Encontrar todos os abastecimentos entre o penúltimo e o último tanque cheio (inclusive o último)
+      const abastecimentosUltimoIntervalo = abastecimentos.filter(a => {
+        const dataAbastecimento = new Date(a.data);
+        return dataAbastecimento >= new Date(penultimoTanqueCheio.data) && 
+               dataAbastecimento <= new Date(ultimoTanqueCheio.data) &&
+               dataAbastecimento > new Date(penultimoTanqueCheio.data); // Excluir o penúltimo
+      });
+      
+      const litrosUltimoIntervalo = abastecimentosUltimoIntervalo.reduce((total, a) => total + a.litros, 0);
+      
+      if (kmUltimoAbastecimento > 0 && litrosUltimoIntervalo > 0) {
+        mediaUltimoAbastecimento = kmUltimoAbastecimento / litrosUltimoIntervalo;
+      }
+    }
     
     return {
-      mediaGeral: totalKm / totalLitros,
-      ultimoAbastecimento: kmUltimoAbastecimento / ultimoAbastecimento.litros
+      mediaGeral: mediaGeral,
+      ultimoAbastecimento: mediaUltimoAbastecimento
     };
   } catch (error) {
     console.error('Erro ao calcular média de consumo:', error);
     throw error;
+  }
+};
+
+// Função para obter os abastecimentos parciais entre dois abastecimentos de tanque cheio
+export const getAbastecimentosParciais = async (tanqueCheioAtual: Abastecimento, tanqueCheioAnterior: Abastecimento): Promise<Abastecimento[]> => {
+  try {
+    // Verificar se ambos os abastecimentos têm tanque cheio
+    if (!tanqueCheioAtual.tanqueCheio || !tanqueCheioAnterior.tanqueCheio) {
+      return [];
+    }
+
+    // Buscar todos os abastecimentos entre os dois abastecimentos de tanque cheio
+    const abastecimentosEntre = await database.getAllAsync<any>(
+      `SELECT * FROM abastecimento 
+       WHERE veiculoId = ? 
+       AND data > ? 
+       AND data < ? 
+       AND tanqueCheio = 0
+       ORDER BY data ASC`,
+      [
+        tanqueCheioAtual.veiculoId,
+        tanqueCheioAnterior.data.toISOString(),
+        tanqueCheioAtual.data.toISOString()
+      ]
+    );
+
+    return abastecimentosEntre.map(row => ({
+      ...row,
+      data: new Date(row.data),
+      tanqueCheio: !!row.tanqueCheio,
+      chequeiCalibragem: !!row.chequeiCalibragem,
+      chequeiOleo: !!row.chequeiOleo,
+      useiAditivo: !!row.useiAditivo,
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar abastecimentos parciais:', error);
+    return [];
+  }
+};
+
+// Função para obter informações de consumo entre dois abastecimentos de tanque cheio
+export const calcularConsumoEntreTanquesCheios = async (
+  tanqueCheioAtual: Abastecimento, 
+  tanqueCheioAnterior: Abastecimento
+): Promise<{
+  kmPercorridos: number;
+  litrosConsumidos: number;
+  mediaConsumo: number;
+  precoPorKm: number;
+  abastecimentosParciais: Abastecimento[];
+}> => {
+  try {
+    // Obter os abastecimentos parciais entre os dois tanques cheios
+    const abastecimentosParciais = await getAbastecimentosParciais(tanqueCheioAtual, tanqueCheioAnterior);
+    
+    // Calcular quilometragem percorrida
+    const kmPercorridos = tanqueCheioAtual.kmAtual - tanqueCheioAnterior.kmAtual;
+    
+    // Calcular litros consumidos (incluindo o abastecimento atual)
+    const litrosConsumidos = tanqueCheioAtual.litros + 
+      abastecimentosParciais.reduce((total, a) => total + a.litros, 0);
+    
+    // Calcular média de consumo
+    const mediaConsumo = kmPercorridos > 0 ? kmPercorridos / litrosConsumidos : 0;
+    
+    // Calcular valor total gasto
+    const valorTotal = tanqueCheioAtual.valorTotal + 
+      abastecimentosParciais.reduce((total, a) => total + a.valorTotal, 0);
+    
+    // Calcular preço por Km
+    const precoPorKm = kmPercorridos > 0 ? valorTotal / kmPercorridos : 0;
+    
+    return {
+      kmPercorridos,
+      litrosConsumidos,
+      mediaConsumo,
+      precoPorKm,
+      abastecimentosParciais
+    };
+  } catch (error) {
+    console.error('Erro ao calcular consumo entre tanques cheios:', error);
+    return {
+      kmPercorridos: 0,
+      litrosConsumidos: 0,
+      mediaConsumo: 0,
+      precoPorKm: 0,
+      abastecimentosParciais: []
+    };
   }
 };
