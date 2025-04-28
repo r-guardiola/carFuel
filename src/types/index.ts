@@ -1,5 +1,11 @@
 export * from './abastecimento';
 export * from './configuracao';
+export * from './veiculo';
+
+// Generic type for objects with any properties
+export interface AnyObject {
+  [key: string]: any;
+}
 
 // Tipos para SQLite
 export interface SQLiteTransaction {

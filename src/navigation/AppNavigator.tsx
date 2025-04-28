@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { DashboardScreen, TestScreen, VeiculosScreen, HomeScreen, SetupScreen } from '../screens';
+import { DashboardScreen, TestScreen, VeiculosScreen, HomeScreen, SetupScreen, ConfiguracoesScreen } from '../screens';
 import { getVeiculoAtivo, getVeiculos } from '../database/veiculoService';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { colors } from '../theme';
@@ -104,6 +104,14 @@ const AppNavigator = () => {
           component={TestScreen}
           options={{
             title: 'Tela de Teste',
+            headerTitleAlign: 'center',
+          }}
+        />
+        <Stack.Screen
+          name="Configuracoes"
+          component={ConfiguracoesScreen}
+          options={{
+            title: 'Configurações',
             headerTitleAlign: 'center',
           }}
         />

@@ -1,4 +1,21 @@
-export const colors = {
+export interface ThemeColors {
+  primary: string;
+  secondary: string;
+  background: string;
+  text: string;
+  lightText: string;
+  error: string;
+  success: string;
+  warning: string;
+  info: string;
+  white: string;
+  black: string;
+  card: string;
+  border: string;
+  disabled: string;
+}
+
+export const colors: ThemeColors = {
   primary: '#0066cc',
   secondary: '#4CAF50',
   background: '#F5F5F5',

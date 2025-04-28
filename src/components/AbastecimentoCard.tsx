@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { Card, Divider, IconButton } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Abastecimento } from '../types/abastecimento';
-import { colors } from '../theme';
+import { useTheme } from '../context/ThemeContext';
 
 interface AbastecimentoCardProps {
   abastecimento: Abastecimento;
@@ -18,6 +18,8 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
   onPress,
   onEdit,
 }) => {
+  const { colors } = useTheme();
+  
   // Calcular km percorridos se tiver abastecimento anterior
   const kmPercorridos = abastecimentoAnterior 
     ? abastecimento.kmAtual - abastecimentoAnterior.kmAtual
@@ -69,6 +71,130 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
       onPress(abastecimento);
     }
   };
+
+  // Definir estilos dentro do componente para usar colors
+  const styles = StyleSheet.create({
+    card: {
+      marginHorizontal: 16,
+      marginVertical: 8,
+      borderRadius: 12,
+      elevation: 4,
+      backgroundColor: colors.card,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    date: {
+      fontSize: 14,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    posto: {
+      fontSize: 14,
+      color: colors.lightText,
+      marginTop: 2,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    editButton: {
+      marginRight: 4,
+    },
+    valueContainer: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    value: {
+      color: colors.white,
+      fontWeight: 'bold',
+      fontSize: 14,
+    },
+    divider: {
+      marginVertical: 12,
+    },
+    detailsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    detailItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    detailLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    detailIcon: {
+      marginRight: 4,
+    },
+    detailLabel: {
+      fontSize: 12,
+      color: colors.lightText,
+    },
+    detailValue: {
+      fontWeight: 'bold',
+      fontSize: 14,
+      color: colors.text,
+    },
+    consumoContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginVertical: 10,
+      backgroundColor: colors.background,
+      padding: 8,
+      borderRadius: 8,
+    },
+    consumoItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    consumoLabelContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 2,
+    },
+    consumoIcon: {
+      marginRight: 4,
+    },
+    consumoLabel: {
+      fontSize: 12,
+      color: colors.lightText,
+    },
+    consumoValue: {
+      fontWeight: 'bold',
+      fontSize: 14,
+      color: colors.text,
+    },
+    tagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: 8,
+    },
+    tag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary + '20',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginRight: 8,
+      marginBottom: 8,
+    },
+    tagIcon: {
+      marginRight: 4,
+    },
+    tagText: {
+      fontSize: 12,
+      color: colors.text,
+    },
+  });
 
   return (
     <TouchableOpacity onPress={handlePress} style={{ marginBottom: 16 }}>
@@ -190,126 +316,4 @@ export const AbastecimentoCard: React.FC<AbastecimentoCardProps> = ({
       </Card>
     </TouchableOpacity>
   );
-};
-
-const styles = StyleSheet.create({
-  card: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
-    elevation: 4,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  date: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  posto: {
-    fontSize: 14,
-    color: colors.lightText,
-    marginTop: 2,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  editButton: {
-    marginRight: 4,
-  },
-  valueContainer: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  value: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  divider: {
-    marginVertical: 12,
-  },
-  detailsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  detailItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  detailLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
-  detailIcon: {
-    marginRight: 4,
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: colors.lightText,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  consumoContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    marginVertical: 10,
-    paddingHorizontal: 16,
-  },
-  consumoItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  consumoLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  consumoIcon: {
-    marginRight: 4,
-  },
-  consumoLabel: {
-    fontSize: 12,
-    color: colors.lightText,
-  },
-  consumoValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  tag: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginRight: 6,
-    marginBottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tagIcon: {
-    marginRight: 4,
-  },
-  tagText: {
-    fontSize: 12,
-    color: colors.text,
-  },
-}); 
+}; 
